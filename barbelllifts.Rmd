@@ -1,0 +1,115 @@
+---
+title: "Practical Machine Learning"
+author: "Josip Jureta"
+date: "26 septembre 2015"
+output: html_document
+---
+
+```{r libraries, echo=FALSE, message=FALSE}
+library(caret)
+library(data.table)
+library(rattle)
+library(corrplot)
+library(doSNOW)
+```
+
+```{r setup, cache=TRUE, echo=FALSE}
+registerDoSNOW(makeCluster(4, type = "SOCK"))
+set.seed(1357)
+
+## load data from files
+loaddata <- function(input) {
+  ## data.table(read.csv(input))
+  fread(input, 
+        na.strings = c('#DIV/0!', 'NA', ''), 
+        drop = c('V1', 'raw_timestamp_part_1', 'raw_timestamp_part_2', 'cvtd_timestamp',
+                 'user_name', 'new_window', 'num_window'),
+        stringsAsFactors = FALSE)  
+}
+
+## write files containing predicted results
+pml_write_files = function(x){
+  n = length(x)
+  for(i in 1:n){
+    filename = paste0("./answers/problem_id_",i,".txt")
+    write.table(x[i],file=filename,quote=FALSE,row.names=FALSE,col.names=FALSE)
+  }
+}
+```
+
+## Synopsis
+
+The goal of this project (see this [link](https://class.coursera.org/predmachlearn-032/human_grading/view/courses/975201/assessments/4/submissions)) is to predict the manner in which different subjects performs barbell lifts. Data used in this project can be found on site of [Human Activity Recognition](http://groupware.les.inf.puc-rio.br/har).
+
+
+## Data cleaning and data preprocessing
+
+```{r loaddata, dependson='setup', cache=TRUE, echo=FALSE}
+## load data
+plmTesting <- loaddata('./data/pml-testing.csv')
+## load data for prediction tests
+plmdata <- loaddata('./data/pml-training.csv')
+```
+
+```{r partitiondata, dependson='loaddata', cache=TRUE, echo=FALSE}
+## partition data for the training and testing
+inTrain = createDataPartition(plmdata$classe, p = 0.70, list=FALSE)
+
+training = plmdata[ inTrain,]
+testing = plmdata[-inTrain,]
+```
+
+```{r datacleaning, dependson='partitiondata', cache=TRUE, echo=FALSE}
+## remove predictors with a lot of NA
+na_count <- sapply(training, function(y) sum(length(which(is.na(y)))))
+
+columns_with_many_na <- na_count > (nrow(training) * 0.90)
+
+training <- training[, -which(columns_with_many_na), with = FALSE]
+testing <- testing[, -which(columns_with_many_na), with = FALSE]
+plmTesting <- plmTesting[, -which(columns_with_many_na), with = FALSE]
+
+## exclude correlated predictors
+descrCor <-  cor(training[, -c('classe'), with = F])
+highlyCorDescr <- findCorrelation(descrCor, cutoff = .75)
+
+training <- training[, -highlyCorDescr, with = FALSE]
+testing <- testing[, -highlyCorDescr, with = FALSE]
+plmTesting <- plmTesting[, -highlyCorDescr, with = FALSE]
+
+nz <- data.table(nearZeroVar(training, saveMetrics=TRUE))
+nzv <- nrow(nz[nzv == T])
+```
+
+## Modeling
+
+```{r modeling, dependson='datacleaning', cache=TRUE, echo=FALSE}
+preProc <- preProcess(training[, -c('classe'), with = F], method = "pca", thresh = 0.95)
+pc <- predict(preProc, training[, -c('classe'), with = F])
+
+## Bootstrap
+# define training control
+train_control <- trainControl(method="cv")
+# train the model 
+model <- train(factor(classe) ~ ., 
+               data = training, 
+               trControl = train_control,
+               preProcess = c("center", "scale"),
+               importance = TRUE,
+               allowParallel = TRUE,
+               method = "rf")
+# make predictions
+predictions <- predict(model, testing)
+# summarize results
+cm <- confusionMatrix(predictions, factor(testing$classe))
+```
+
+```{r, echo=FALSE}
+tests <- predict( model, plmTesting)
+pml_write_files(tests)
+```
+
+```{r, echo=FALSE}
+corrplot(cor(training[, -c('classe'), with = F]), method = "number", tl.cex = 0.5)
+```
+
