@@ -104,9 +104,43 @@ nzv &lt;- nrow(nz[nzv == TRUE])</code></pre>
 </div>
 <div id="modeling" class="section level2">
 <h2>Modeling</h2>
-<pre><code>## Loading required package: randomForest
-## randomForest 4.6-10
-## Type rfNews() to see new features/changes/bug fixes.</code></pre>
+<pre class="r"><code>preProc &lt;- preProcess(training[, -c('classe'), with = F], method = &quot;pca&quot;, thresh = 0.95)
+pc &lt;- predict(preProc, training[, -c('classe'), with = F])
+
+# define training control
+train_control &lt;- trainControl(method=&quot;cv&quot;)
+# train the model 
+model &lt;- train(factor(classe) ~ ., 
+               data = training, 
+               trControl = train_control,
+               preProcess = c(&quot;center&quot;, &quot;scale&quot;, &quot;pca&quot;),
+               importance = TRUE,
+               allowParallel = TRUE,
+               method = &quot;rf&quot;)</code></pre>
+<pre><code>## Warning in randomForest.default(x, y, mtry = param$mtry, ...): invalid
+## mtry: reset to within valid range</code></pre>
+<pre><code>## Warning in randomForest.default(x, y, mtry = param$mtry, ...): invalid
+## mtry: reset to within valid range</code></pre>
+<pre><code>## Warning in randomForest.default(x, y, mtry = param$mtry, ...): invalid
+## mtry: reset to within valid range</code></pre>
+<pre><code>## Warning in randomForest.default(x, y, mtry = param$mtry, ...): invalid
+## mtry: reset to within valid range</code></pre>
+<pre><code>## Warning in randomForest.default(x, y, mtry = param$mtry, ...): invalid
+## mtry: reset to within valid range</code></pre>
+<pre><code>## Warning in randomForest.default(x, y, mtry = param$mtry, ...): invalid
+## mtry: reset to within valid range</code></pre>
+<pre><code>## Warning in randomForest.default(x, y, mtry = param$mtry, ...): invalid
+## mtry: reset to within valid range</code></pre>
+<pre><code>## Warning in randomForest.default(x, y, mtry = param$mtry, ...): invalid
+## mtry: reset to within valid range</code></pre>
+<pre><code>## Warning in randomForest.default(x, y, mtry = param$mtry, ...): invalid
+## mtry: reset to within valid range</code></pre>
+<pre><code>## Warning in randomForest.default(x, y, mtry = param$mtry, ...): invalid
+## mtry: reset to within valid range</code></pre>
+<pre class="r"><code># make predictions
+predictions &lt;- predict(model, testing)
+# summarize results
+cm &lt;- confusionMatrix(predictions, factor(testing$classe))</code></pre>
 </div>
 
 

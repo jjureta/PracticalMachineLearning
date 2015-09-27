@@ -97,18 +97,19 @@ corrplot(cor(training[, -c('classe'), with = F]), method = "number", tl.cex = 0.
 
 ## Modeling
 
-```{r modeling, dependson='datacleaningcrr', cache=TRUE, echo=FALSE}
+For the modeling I'm using the random forest algorithm with preprocessing: center, scale and PCA and for its validation validation, I used k-fold Cross Validation (i.e. cv).
+
+```{r modeling, dependson='datacleaningcrr', cache=TRUE, warning=FALSE}
 preProc <- preProcess(training[, -c('classe'), with = F], method = "pca", thresh = 0.95)
 pc <- predict(preProc, training[, -c('classe'), with = F])
 
-## Bootstrap
 # define training control
 train_control <- trainControl(method="cv")
 # train the model 
 model <- train(factor(classe) ~ ., 
                data = training, 
                trControl = train_control,
-               preProcess = c("center", "scale"),
+               preProcess = c("center", "scale", "pca"),
                importance = TRUE,
                allowParallel = TRUE,
                method = "rf")
