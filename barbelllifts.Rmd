@@ -44,6 +44,7 @@ The goal of this project (see this [link](https://class.coursera.org/predmachlea
 
 ## Data cleaning and data preprocessing
 
+Data used for this project are downloaded from [here](https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv). Some of variables are not important for the prediction model (like for ex. user name or time serie data) and thay are removed during the data load.
 ```{r loaddata, dependson='setup', cache=TRUE, echo=FALSE}
 ## load data
 plmTesting <- loaddata('./data/pml-testing.csv')
@@ -51,15 +52,16 @@ plmTesting <- loaddata('./data/pml-testing.csv')
 plmdata <- loaddata('./data/pml-training.csv')
 ```
 
-```{r partitiondata, dependson='loaddata', cache=TRUE, echo=FALSE}
-## partition data for the training and testing
+For model building I used 70% of data and 30% are used for model validation.
+```{r partitiondata, dependson='loaddata', cache=TRUE}
 inTrain = createDataPartition(plmdata$classe, p = 0.70, list=FALSE)
 
 training = plmdata[ inTrain,]
 testing = plmdata[-inTrain,]
 ```
 
-```{r datacleaning, dependson='partitiondata', cache=TRUE, echo=FALSE}
+Some of predictors doesn't contains enough of data (too much NA values). Those predictors are identified and removed from the training and testing data set.
+```{r datacleaningna, dependson='partitiondata', cache=TRUE}
 ## remove predictors with a lot of NA
 na_count <- sapply(training, function(y) sum(length(which(is.na(y)))))
 
@@ -68,7 +70,10 @@ columns_with_many_na <- na_count > (nrow(training) * 0.90)
 training <- training[, -which(columns_with_many_na), with = FALSE]
 testing <- testing[, -which(columns_with_many_na), with = FALSE]
 plmTesting <- plmTesting[, -which(columns_with_many_na), with = FALSE]
+```
 
+Also, predictors with strong correlation between them are removed:
+```{r datacleaningcrr, dependson='datacleaningna', cache=TRUE}
 ## exclude correlated predictors
 descrCor <-  cor(training[, -c('classe'), with = F])
 highlyCorDescr <- findCorrelation(descrCor, cutoff = .75)
@@ -76,14 +81,23 @@ highlyCorDescr <- findCorrelation(descrCor, cutoff = .75)
 training <- training[, -highlyCorDescr, with = FALSE]
 testing <- testing[, -highlyCorDescr, with = FALSE]
 plmTesting <- plmTesting[, -highlyCorDescr, with = FALSE]
+```
 
+Verify if there are still data with near zero variability:
+```{r dependson='datacleaningcrr', cache=TRUE}
 nz <- data.table(nearZeroVar(training, saveMetrics=TRUE))
-nzv <- nrow(nz[nzv == T])
+nzv <- nrow(nz[nzv == TRUE])
+```
+There is `r nzv` rows with near zero variability.
+
+The correlation between predictors I will continue to use for modeling is shown in this graph:
+```{r, echo=FALSE}
+corrplot(cor(training[, -c('classe'), with = F]), method = "number", tl.cex = 0.5)
 ```
 
 ## Modeling
 
-```{r modeling, dependson='datacleaning', cache=TRUE, echo=FALSE}
+```{r modeling, dependson='datacleaningcrr', cache=TRUE, echo=FALSE}
 preProc <- preProcess(training[, -c('classe'), with = F], method = "pca", thresh = 0.95)
 pc <- predict(preProc, training[, -c('classe'), with = F])
 
@@ -107,9 +121,5 @@ cm <- confusionMatrix(predictions, factor(testing$classe))
 ```{r, echo=FALSE}
 tests <- predict( model, plmTesting)
 pml_write_files(tests)
-```
-
-```{r, echo=FALSE}
-corrplot(cor(training[, -c('classe'), with = F]), method = "number", tl.cex = 0.5)
 ```
 
