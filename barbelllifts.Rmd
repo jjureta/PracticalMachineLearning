@@ -40,6 +40,7 @@ pml_write_files = function(x){
 ## Synopsis
 
 The goal of this project (see this [link](https://class.coursera.org/predmachlearn-032/human_grading/view/courses/975201/assessments/4/submissions)) is to predict the manner in which different subjects performs barbell lifts. Data used in this project can be found on site of [Human Activity Recognition](http://groupware.les.inf.puc-rio.br/har).
+I'm expecting to make a model with more than 95% of accuracy. 
 
 
 ## Data cleaning and data preprocessing
@@ -100,9 +101,6 @@ corrplot(cor(training[, -c('classe'), with = F]), method = "number", tl.cex = 0.
 For the modeling I'm using the random forest algorithm with preprocessing: center, scale and PCA and for its validation validation, I used k-fold Cross Validation (i.e. cv).
 
 ```{r modeling, dependson='datacleaningcrr', cache=TRUE, warning=FALSE}
-preProc <- preProcess(training[, -c('classe'), with = F], method = "pca", thresh = 0.95)
-pc <- predict(preProc, training[, -c('classe'), with = F])
-
 # define training control
 train_control <- trainControl(method="cv")
 # train the model 
@@ -118,6 +116,8 @@ predictions <- predict(model, testing)
 # summarize results
 cm <- confusionMatrix(predictions, factor(testing$classe))
 ```
+
+The model accuracy is validate with confusion matrix and for this model it is `r cm$overall['Accuracy']*100`%.
 
 ```{r, echo=FALSE}
 tests <- predict( model, plmTesting)
