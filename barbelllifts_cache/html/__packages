@@ -6,3 +6,8 @@ data.table
 RGtk2
 rattle
 corrplot
+foreach
+iterators
+snow
+doSNOW
+randomForest
